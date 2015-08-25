@@ -84,6 +84,7 @@ func main() {
 
 	close(s5.done)
 	close(s5.upload)
+	s5.bar.Increment()
 	s5.bar.FinishPrint("The End!")
 }
 
@@ -95,7 +96,6 @@ func (s5 *StupidSimpleS3Backup) pushFiles(prefix string) error {
 				// log.Println("Received file", p)
 				defer s5.wg.Done()
 
-				// OLD WAY
 				file, err := os.Open(p)
 				if err != nil {
 					log.Panic(err)
@@ -112,13 +112,11 @@ func (s5 *StupidSimpleS3Backup) pushFiles(prefix string) error {
 
 				filetype := http.DetectContentType(payload)
 				fileName := strings.TrimPrefix(file.Name(), prefix+"/")
-				// err = s5.bucket.Put("n3w/"+fileName, bytes, filetype, s3.ACL("public-read"), s3.Options{})
 
 				params := &s3.PutObjectInput{
 					Bucket:        aws.String(s5.bucket), // Required
 					Key:           aws.String(fileName),  // Required
 					Body:          bytes.NewReader(payload),
-					CacheControl:  aws.String("CacheControl"),
 					ContentLength: aws.Int64(size),
 					ContentType:   aws.String(filetype),
 					Metadata: map[string]*string{
@@ -135,11 +133,12 @@ func (s5 *StupidSimpleS3Backup) pushFiles(prefix string) error {
 					log.Panic(err)
 					return
 				}
-				log.Println("response:", resp)
 				if err != nil {
 					log.Panic(err)
 				}
-
+				if DEBUG {
+					log.Printf("response: %+v\n", resp)
+				}
 				s5.done <- fileName
 			}(path)
 
@@ -161,10 +160,10 @@ func GenFileList(src string) []string {
 
 func (s5 *StupidSimpleS3Backup) fileManager() {
 	index := 0
-	numFiles := len(s5.fileList)
+	// numFiles := len(s5.fileList)
 
-	if numFiles < limit {
-		limit = numFiles
+	if s5.fileCount < limit {
+		limit = s5.fileCount
 	}
 	// start go func to
 	go func() {
@@ -178,9 +177,10 @@ func (s5 *StupidSimpleS3Backup) fileManager() {
 				}
 
 				// Previous file completed uploading
+				// s5.wg.Done()
 				index++
 				s5.bar.Increment()
-				if index < numFiles {
+				if index < s5.fileCount {
 					s5.upload <- s5.fileList[index]
 				}
 			}
