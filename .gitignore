@@ -22,4 +22,4 @@ _testmain.go
 *.exe
 *.test
 *.prof
-stupid-simple-s3-backup
+simple-s3-upload
