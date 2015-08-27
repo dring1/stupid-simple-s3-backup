@@ -146,18 +146,25 @@ func (s5 *StupidSimpleS3Backup) FileUpload(fp string, cb func()) {
 	_, err = buffer.Read(payload)
 
 	filetype := http.DetectContentType(payload)
+
 	fileName := strings.TrimPrefix(file.Name(), s5.src+"/")
+
+	if DEBUG {
+		log.Printf("%s is type %s", fileName, filetype)
+	}
 
 	if DEBUG {
 		log.Println("Evaluating file:", s5.Dest+"/"+fileName)
 	}
+
+	contentType := GetContentType(filepath.Ext(fp), filetype)
 
 	params := &s3.PutObjectInput{
 		Bucket:        aws.String(s5.Bucket),                // Required
 		Key:           aws.String(s5.Dest + "/" + fileName), // Required
 		Body:          bytes.NewReader(payload),
 		ContentLength: aws.Int64(size),
-		ContentType:   aws.String(filetype),
+		ContentType:   aws.String(contentType),
 	}
 	resp, err := s5.svc.PutObject(params)
 
@@ -172,4 +179,15 @@ func (s5 *StupidSimpleS3Backup) FileUpload(fp string, cb func()) {
 		log.Printf("response: %+v\n", resp)
 	}
 	s5.done <- fileName
+}
+
+func GetContentType(ext string, def string) string {
+	switch ext {
+	case ".js":
+		return "application/javascript"
+	case ".css":
+		return "text/css"
+	default:
+		return def
+	}
 }
