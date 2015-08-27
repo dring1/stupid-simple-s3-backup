@@ -14,10 +14,8 @@ import (
 
 // This commit value will be assigned by the ld flag at compile time
 var (
-	commit      string
-	commitStamp bool
-	timeStamp   bool
-	debug       bool
+	timeStamp bool
+	debug     bool
 )
 
 func main() {
@@ -29,7 +27,6 @@ func main() {
 	secretPtr := flag.String("secret", os.Getenv("AWS_SECRET_ACCESS_KEY"), "AWS_SECRET_ACCESS_KEY")
 
 	destPtr := flag.String("dest", "new", "Destination path of root directory where you wish the contents to go in the bucket")
-	flag.BoolVar(&commitStamp, "commitstamp", false, "append timestamp to the destination the commit")
 	flag.BoolVar(&timeStamp, "timestamp", false, "append commitstamp to the destination the commit")
 	flag.BoolVar(&debug, "debug", false, "enable debug mode")
 
@@ -37,9 +34,6 @@ func main() {
 
 	p := []string{
 		*destPtr,
-	}
-	if commitStamp && commit != "" {
-		p = append(p, commit)
 	}
 
 	if timeStamp {
