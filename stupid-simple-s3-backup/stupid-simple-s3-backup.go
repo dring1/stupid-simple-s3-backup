@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	limit = 25
+	limit = 1
 	DEBUG = false
 )
 
@@ -182,6 +182,11 @@ func (s5 *StupidSimpleS3Backup) FileUpload(fp string, cb func()) {
 	resp, err := s5.svc.PutObject(params)
 
 	if err != nil {
+
+		log.Println(err)
+		log.Println(filetype)
+		log.Println(fileName)
+		log.Println(size)
 		s5.errChan <- err
 		return
 	}
