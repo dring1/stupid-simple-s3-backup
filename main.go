@@ -25,8 +25,8 @@ func main() {
 	srcPtr := flag.String("src", os.Getenv("PWD"), "src folder of files (default this folder)")
 	keyPtr := flag.String("key", os.Getenv("AWS_ACCESS_KEY_ID"), "AWS_ACCESS_KEY_ID")
 	secretPtr := flag.String("secret", os.Getenv("AWS_SECRET_ACCESS_KEY"), "AWS_SECRET_ACCESS_KEY")
-
 	destPtr := flag.String("dest", "new", "Destination path of root directory where you wish the contents to go in the bucket")
+
 	flag.BoolVar(&timeStamp, "timestamp", false, "append commitstamp to the destination the commit")
 	flag.BoolVar(&debug, "debug", false, "enable debug mode")
 

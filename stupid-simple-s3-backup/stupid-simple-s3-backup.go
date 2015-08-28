@@ -25,6 +25,7 @@ type StupidSimpleS3Backup struct {
 	FileCount int
 	upload    chan string
 	done      chan string
+	errChan   chan error
 	Bucket    string
 	Dest      string
 	wg        sync.WaitGroup
@@ -45,11 +46,18 @@ func New(src string, dest string, bucket string, key string, secret string, regi
 
 	fileList := GenFileList(src)
 
+	if DEBUG {
+		for _, f := range fileList {
+			log.Println("File: ", f)
+		}
+	}
+
 	return &StupidSimpleS3Backup{
 		fileList:  fileList,
 		FileCount: len(fileList),
 		upload:    make(chan string),
 		done:      make(chan string),
+		errChan:   make(chan error),
 		Bucket:    bucket,
 		Dest:      dest,
 		src:       src,
@@ -61,25 +69,23 @@ func New(src string, dest string, bucket string, key string, secret string, regi
 }
 
 func (s5 *StupidSimpleS3Backup) Run(cb func()) {
-
 	s5.wg.Add(s5.FileCount)
 	go s5.FileDispatcher(cb)
 	go s5.FileManager()
-
 	s5.wg.Wait()
-
-	close(s5.done)
-	close(s5.upload)
 }
 
-func (s5 *StupidSimpleS3Backup) FileDispatcher(cb func()) error {
+func (s5 *StupidSimpleS3Backup) FileDispatcher(cb func()) {
 	for {
 		select {
 		case fpath := <-s5.upload:
 			go s5.FileUpload(fpath, cb)
+		case err := <-s5.errChan:
+			// When error is received
+			// log.fatal will os.exit the program
+			log.Fatalf("Error occurred while uploading a file: %s", err.Error())
 		}
 	}
-	return nil
 }
 
 func GenFileList(src string) []string {
@@ -107,7 +113,7 @@ func (s5 *StupidSimpleS3Backup) FileManager() {
 
 				if DEBUG {
 					log.Println("Received done for", name)
-					log.Printf("%+v", s5.wg)
+					log.Printf("%+v\n", s5.wg)
 				}
 
 				index++
@@ -133,7 +139,8 @@ func (s5 *StupidSimpleS3Backup) FileUpload(fp string, cb func()) {
 
 	file, err := os.Open(fp)
 	if err != nil {
-		log.Panic(err)
+		s5.errChan <- err
+		return
 	}
 	defer file.Close()
 
@@ -145,12 +152,17 @@ func (s5 *StupidSimpleS3Backup) FileUpload(fp string, cb func()) {
 	buffer := bufio.NewReader(file)
 	_, err = buffer.Read(payload)
 
+	if err != nil {
+		s5.errChan <- err
+		return
+	}
+
 	filetype := http.DetectContentType(payload)
 
 	fileName := strings.TrimPrefix(file.Name(), s5.src+"/")
 
 	if DEBUG {
-		log.Printf("%s is type %s", fileName, filetype)
+		log.Printf("%s is type %s\n", fileName, filetype)
 	}
 
 	if DEBUG {
@@ -166,15 +178,14 @@ func (s5 *StupidSimpleS3Backup) FileUpload(fp string, cb func()) {
 		ContentLength: aws.Int64(size),
 		ContentType:   aws.String(contentType),
 	}
+
 	resp, err := s5.svc.PutObject(params)
 
 	if err != nil {
-		log.Println(err)
+		s5.errChan <- err
 		return
 	}
-	if err != nil {
-		log.Panic(err)
-	}
+
 	if DEBUG {
 		log.Printf("response: %+v\n", resp)
 	}
