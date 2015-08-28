@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	limit = 1
+	LIMIT = 20
 	DEBUG = false
 )
 
@@ -33,8 +33,10 @@ type StupidSimpleS3Backup struct {
 	src       string
 }
 
-func New(src string, dest string, bucket string, key string, secret string, region string, debug bool) *StupidSimpleS3Backup {
+func New(src string, dest string, bucket string, key string, secret string, region string, l int, debug bool) *StupidSimpleS3Backup {
 	DEBUG = debug
+	LIMIT = l
+
 	creds := credentials.NewStaticCredentials(key, secret, "")
 	_, err := creds.Get()
 
@@ -100,10 +102,10 @@ func GenFileList(src string) []string {
 }
 
 func (s5 *StupidSimpleS3Backup) FileManager() {
-	index := limit - 1
+	index := LIMIT - 1
 
-	if s5.FileCount < limit {
-		limit = s5.FileCount
+	if s5.FileCount < LIMIT {
+		LIMIT = s5.FileCount
 	}
 	// start go func to
 	go func() {
@@ -127,7 +129,7 @@ func (s5 *StupidSimpleS3Backup) FileManager() {
 	}()
 
 	// kick off the
-	for i := 0; i < limit; i++ {
+	for i := 0; i < LIMIT; i++ {
 		s5.upload <- s5.fileList[i]
 	}
 
