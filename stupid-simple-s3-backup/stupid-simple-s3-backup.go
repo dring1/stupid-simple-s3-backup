@@ -179,6 +179,9 @@ func (s5 *StupidSimpleS3Backup) FileUpload(fp string, cb func()) {
 		Body:          bytes.NewReader(payload),
 		ContentLength: aws.Int64(size),
 		ContentType:   aws.String(contentType),
+		Metadata: map[string]*string{
+			"Cache-Control": aws.String("must-revalidate"),
+		},
 	}
 
 	resp, err := s5.svc.PutObject(params)
